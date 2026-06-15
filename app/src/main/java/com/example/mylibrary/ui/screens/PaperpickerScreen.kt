@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mylibrary.data.PaperEntity
-import com.example.mylibrary.viewmodel.UnitViewModel
+import com.example.mylibrary.data.LibraryRepository
 import com.example.mylibrary.viewmodel.UnitViewModelFactory
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -41,24 +41,33 @@ fun PaperPickerScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
-    val vm: UnitViewModel = viewModel(
-        factory = UnitViewModelFactory(context.applicationContext as Application, unitId)
-    )
-    val scope = rememberCoroutineScope()
+    val scope   = rememberCoroutineScope()
 
-    var selectedUri   by remember { mutableStateOf<Uri?>(null) }
-    var selectedName  by remember { mutableStateOf("") }
-    var customTitle   by remember { mutableStateOf("") }
-    var saving        by remember { mutableStateOf(false) }
+    var selectedUri  by remember { mutableStateOf<Uri?>(null) }
+    var selectedName by remember { mutableStateOf("") }
+    var customTitle  by remember { mutableStateOf("") }
+    var saving       by remember { mutableStateOf(false) }
 
+    // Use GET_CONTENT so we get a content:// URI with read permission
     val picker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
+        contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) {
+            // Persist the permission so we can reopen it later
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
             selectedUri  = uri
-            val fileName = uri.lastPathSegment?.substringAfterLast("/") ?: "document"
+            val fileName = uri.lastPathSegment?.substringAfterLast("/")
+                ?.substringAfterLast("%2F") ?: "document"
             selectedName = fileName
-            if (customTitle.isBlank()) customTitle = fileName.substringBeforeLast(".")
+            if (customTitle.isBlank()) {
+                customTitle = fileName
+                    .substringBeforeLast(".")
+                    .replace("%20", " ")
+                    .replace("_", " ")
+            }
         }
     }
 
@@ -66,7 +75,14 @@ fun PaperPickerScreen(
         containerColor = DarkBg,
         topBar = {
             TopAppBar(
-                title = { Text("Add Paper", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold) },
+                title = {
+                    Text(
+                        "Add Paper",
+                        color      = TextPrimary,
+                        fontSize   = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
@@ -77,14 +93,16 @@ fun PaperPickerScreen(
         }
     ) { innerPadding ->
         Column(
-            modifier            = Modifier.fillMaxSize().padding(innerPadding).padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top
+            modifier            = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Pick file button
+            // Pick file area
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -95,12 +113,17 @@ fun PaperPickerScreen(
             ) {
                 if (selectedUri == null) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(Icons.Default.AttachFile, contentDescription = null, tint = FolderAmber, modifier = Modifier.size(48.dp))
+                        Icon(
+                            Icons.Default.AttachFile,
+                            contentDescription = null,
+                            tint     = FolderAmber,
+                            modifier = Modifier.size(48.dp)
+                        )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text("Tap to pick a PDF or document", color = TextSecondary, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(16.dp))
                         OutlinedButton(
-                            onClick = { picker.launch("*/*") },
+                            onClick = { picker.launch(arrayOf("application/pdf", "*/*")) },
                             colors  = ButtonDefaults.outlinedButtonColors(contentColor = FolderAmber),
                             border  = androidx.compose.foundation.BorderStroke(1.dp, FolderAmber)
                         ) {
@@ -111,9 +134,14 @@ fun PaperPickerScreen(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("📄", fontSize = 40.sp)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(selectedName, color = TextPrimary, fontSize = 13.sp, maxLines = 2)
+                        Text(
+                            selectedName.replace("%20", " "),
+                            color    = TextPrimary,
+                            fontSize = 13.sp,
+                            maxLines = 2
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
-                        TextButton(onClick = { picker.launch("*/*") }) {
+                        TextButton(onClick = { picker.launch(arrayOf("application/pdf", "*/*")) }) {
                             Text("Change file", color = FolderAmber, fontSize = 13.sp)
                         }
                     }
@@ -123,7 +151,12 @@ fun PaperPickerScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Title field
-            Text("Paper Title", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.align(Alignment.Start))
+            Text(
+                "Paper Title",
+                color    = TextSecondary,
+                fontSize = 12.sp,
+                modifier = Modifier.align(Alignment.Start)
+            )
             Spacer(modifier = Modifier.height(6.dp))
             OutlinedTextField(
                 value         = customTitle,
@@ -133,33 +166,33 @@ fun PaperPickerScreen(
                 modifier      = Modifier.fillMaxWidth(),
                 shape         = RoundedCornerShape(10.dp),
                 colors        = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor   = NetflixRed, unfocusedBorderColor = Color(0xFF2A2A2A),
-                    focusedTextColor     = TextPrimary, unfocusedTextColor  = TextPrimary,
-                    cursorColor          = NetflixRed
+                    focusedBorderColor    = NetflixRed,
+                    unfocusedBorderColor  = Color(0xFF2A2A2A),
+                    focusedTextColor      = TextPrimary,
+                    unfocusedTextColor    = TextPrimary,
+                    cursorColor           = NetflixRed
                 )
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Save button
             Button(
                 onClick = {
                     if (selectedUri != null && customTitle.isNotBlank()) {
                         saving = true
                         scope.launch {
-                            vm.let {
-                                // Save paper entity — file path stored as URI string
-                                val repo = com.example.mylibrary.data.LibraryRepository(context)
-                                repo.savePaper(
-                                    PaperEntity(
-                                        id       = UUID.randomUUID().toString(),
-                                        unitId   = unitId,
-                                        title    = customTitle.trim(),
-                                        filePath = selectedUri.toString(),
-                                        mimeType = context.contentResolver.getType(selectedUri!!) ?: "application/octet-stream"
-                                    )
+                            val repo = LibraryRepository(context)
+                            repo.savePaper(
+                                PaperEntity(
+                                    id       = UUID.randomUUID().toString(),
+                                    unitId   = unitId,
+                                    title    = customTitle.trim(),
+                                    // Store URI string — permission is already persisted
+                                    filePath = selectedUri.toString(),
+                                    mimeType = context.contentResolver.getType(selectedUri!!)
+                                        ?: "application/pdf"
                                 )
-                            }
+                            )
                             onBack()
                         }
                     }
@@ -173,9 +206,18 @@ fun PaperPickerScreen(
                 )
             ) {
                 if (saving) {
-                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(
+                        color       = Color.White,
+                        modifier    = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
                 } else {
-                    Text("Save Paper", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        "Save Paper",
+                        color      = Color.White,
+                        fontSize   = 15.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

@@ -59,7 +59,8 @@ fun UnitDetailScreen(
     onBack:      () -> Unit,
     onOpenNote:  (NoteEntity) -> Unit = {},
     onAddNote:   () -> Unit = {},
-    onAddPaper:  () -> Unit = {}
+    onAddPaper:  () -> Unit = {},
+    onOpenPaper: (PaperEntity) -> Unit = {}
 ) {
     val context = LocalContext.current
     val vm: UnitViewModel = viewModel(
@@ -143,7 +144,7 @@ fun UnitDetailScreen(
 
             when (selectedTab) {
                 UnitTab.NOTES  -> NotesTab(notes,  onOpenNote, onAddNote,  { vm.deleteNote(it) })
-                UnitTab.PAPERS -> PapersTab(papers, onAddPaper, { vm.deletePaper(it) })
+                UnitTab.PAPERS -> PapersTab(papers, onAddPaper, { vm.deletePaper(it) }, onOpenPaper)
             }
         }
     }
@@ -163,13 +164,13 @@ fun NotesTab(notes: List<NoteEntity>, onOpen: (NoteEntity) -> Unit, onAdd: () ->
 }
 
 @Composable
-fun PapersTab(papers: List<PaperEntity>, onAdd: () -> Unit, onDelete: (PaperEntity) -> Unit) {
+fun PapersTab(papers: List<PaperEntity>, onAdd: () -> Unit, onDelete: (PaperEntity) -> Unit, onOpen: (PaperEntity) -> Unit = {}) {
     if (papers.isEmpty()) {
         EmptyState("📄", "No papers yet", "Tap + to attach a paper or PDF")
     } else {
         LazyColumn(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             items(papers, key = { it.id }) { paper ->
-                PaperCard(paper = paper, onDelete = { onDelete(paper) })
+                PaperCard(paper = paper, onDelete = { onDelete(paper) }, onClick = { onOpen(paper) })
             }
         }
     }
@@ -211,13 +212,14 @@ fun NoteCard(note: NoteEntity, onClick: () -> Unit, onDelete: () -> Unit) {
 }
 
 @Composable
-fun PaperCard(paper: PaperEntity, onDelete: () -> Unit) {
+fun PaperCard(paper: PaperEntity, onDelete: () -> Unit, onClick: () -> Unit = {}) {
     var showConfirm by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(CardBg)
+            .clickable(onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
