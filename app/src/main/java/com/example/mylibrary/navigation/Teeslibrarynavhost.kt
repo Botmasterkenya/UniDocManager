@@ -12,7 +12,7 @@ import com.example.mylibrary.ui.note.NoteEditorScreen
 import com.example.mylibrary.ui.onboarding.OnboardingScreen
 import com.example.mylibrary.ui.onboarding.isOnboarded
 import com.example.mylibrary.ui.paper.PaperPickerScreen
-import com.example.mylibrary.ui.paper.PdfViewerScreen
+import com.example.mylibrary.ui.viewer.DocumentViewerScreen
 import com.example.mylibrary.ui.splash.SplashScreen
 import com.example.mylibrary.ui.unit.UnitDetailScreen
 import java.net.URLDecoder
@@ -25,7 +25,7 @@ object Routes {
     const val UNIT        = "unit/{unitId}/{unitName}/{unitCode}"
     const val NOTE_EDITOR = "note_editor/{unitId}?noteId={noteId}"
     const val PAPER_PICK  = "paper_pick/{unitId}"
-    const val PDF_VIEWER  = "pdf_viewer/{title}/{filePath}"
+    const val PDF_VIEWER  = "pdf_viewer"   // URI passed via ViewerCache, not nav args
 
     fun unitRoute(unitId: String, unitName: String, unitCode: String) =
         "unit/${unitId.enc()}/${unitName.enc()}/${unitCode.enc()}"
@@ -36,8 +36,12 @@ object Routes {
 
     fun paperPickRoute(unitId: String) = "paper_pick/${unitId.enc()}"
 
-    fun pdfViewerRoute(title: String, filePath: String) =
-        "pdf_viewer/${title.enc()}/${filePath.enc()}"
+    fun pdfViewerRoute(title: String, filePath: String): String {
+        // Store in cache so the viewer can read it without URI encoding issues
+        com.example.mylibrary.ui.viewer.ViewerCache.pendingTitle    = title
+        com.example.mylibrary.ui.viewer.ViewerCache.pendingFilePath = filePath
+        return "pdf_viewer"
+    }
 
     private fun String.enc() = URLEncoder.encode(this, "UTF-8")
     fun String.dec()         = URLDecoder.decode(this, "UTF-8")
@@ -105,11 +109,11 @@ fun TeesLibraryNavHost(navController: NavHostController) {
             PaperPickerScreen(unitId = unitId, onBack = { navController.popBackStack() })
         }
 
-        // ── PDF viewer ─────────────────────────────────────────────────────────
-        composable(Routes.PDF_VIEWER) { back ->
-            val title    = back.arguments?.getString("title")?.dec()    ?: ""
-            val filePath = back.arguments?.getString("filePath")?.dec() ?: ""
-            PdfViewerScreen(title = title, filePath = filePath, onBack = { navController.popBackStack() })
+        // ── Document viewer ────────────────────────────────────────────────────
+        composable(Routes.PDF_VIEWER) {
+            val title    = com.example.mylibrary.ui.viewer.ViewerCache.pendingTitle
+            val filePath = com.example.mylibrary.ui.viewer.ViewerCache.pendingFilePath
+            DocumentViewerScreen(title = title, filePath = filePath, onBack = { navController.popBackStack() })
         }
     }
 }

@@ -54,10 +54,15 @@ fun PaperPickerScreen(
     ) { uri ->
         if (uri != null) {
             // Persist the permission so we can reopen it later
-            context.contentResolver.takePersistableUriPermission(
-                uri,
-                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
+            // Persist READ permission so the URI stays accessible after app restarts
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    uri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                )
+            } catch (e: SecurityException) {
+                // Some providers don't support persistable permissions — that's ok
+            }
             selectedUri  = uri
             val fileName = uri.lastPathSegment?.substringAfterLast("/")
                 ?.substringAfterLast("%2F") ?: "document"
@@ -120,10 +125,10 @@ fun PaperPickerScreen(
                             modifier = Modifier.size(48.dp)
                         )
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("Tap to pick a PDF or document", color = TextSecondary, fontSize = 14.sp)
+                        Text("Tap to pick any document, PDF or image", color = TextSecondary, fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(16.dp))
                         OutlinedButton(
-                            onClick = { picker.launch(arrayOf("application/pdf", "*/*")) },
+                            onClick = { picker.launch(arrayOf("*/*")) },
                             colors  = ButtonDefaults.outlinedButtonColors(contentColor = FolderAmber),
                             border  = androidx.compose.foundation.BorderStroke(1.dp, FolderAmber)
                         ) {
@@ -141,7 +146,7 @@ fun PaperPickerScreen(
                             maxLines = 2
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        TextButton(onClick = { picker.launch(arrayOf("application/pdf", "*/*")) }) {
+                        TextButton(onClick = { picker.launch(arrayOf("*/*")) }) {
                             Text("Change file", color = FolderAmber, fontSize = 13.sp)
                         }
                     }
