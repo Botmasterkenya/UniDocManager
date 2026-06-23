@@ -169,7 +169,7 @@ fun PdfViewerScreen(
                     Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
                         CircularProgressIndicator(color = NetflixRed)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("Preparing Document...", color = TextSecondary, fontSize = 13.sp)
+                        Text("Preparing Paper...", color = TextSecondary, fontSize = 13.sp)
                     }
                 }
                 error != null -> {

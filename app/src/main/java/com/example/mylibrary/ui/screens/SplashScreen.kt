@@ -1,5 +1,6 @@
 package com.example.mylibrary.ui.splash
 
+import android.media.MediaPlayer
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -11,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -25,8 +27,27 @@ private val TaglineGray  = Color(0xFF888888)
 @Composable
 fun SplashScreen(onSplashFinished: () -> Unit = {}) {
 
+    val context = LocalContext.current
     var startAnim by remember { mutableStateOf(false) }
 
+    // ── Sound effect ──────────────────────────────────────────────────────────
+    DisposableEffect(Unit) {
+        val resId = context.resources.getIdentifier("splash_sound", "raw", context.packageName)
+        val player = if (resId != 0) {
+            try {
+                MediaPlayer.create(context, resId)?.apply { start() }
+            } catch (e: Exception) { null }
+        } else null
+
+        onDispose {
+            player?.let {
+                if (it.isPlaying) it.stop()
+                it.release()
+            }
+        }
+    }
+
+    // ── Animations ────────────────────────────────────────────────────────────
     val logoScale by animateFloatAsState(
         targetValue   = if (startAnim) 1f else 0.6f,
         animationSpec = keyframes {
